@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 #include <sys/select.h>
 
-#define client_MAX 30
+#define client_MAX 32
 #define MAXLINE 1024
 
 int main(int argc, char *argv[]) {
@@ -52,11 +52,11 @@ int main(int argc, char *argv[]) {
     listen(server_fd, client_MAX);
 
     // initialize client record
-    int maxfd = server_fd + 1, maxClient = -1;                                              // current max fd is listen, no client is recorded
-    int client[client_MAX], client_login[client_MAX];                                       // save all client's sockfd, and check whether client login or not
+    int maxfd = server_fd + 1, maxClient = -1, client[client_MAX];                          // current max fd is listen, client_num recorded, each client's sockfd
+    bool client_login[client_MAX];                                                          // check whether client login or not
     fd_set afds, rfds;                                                                      // read && active file descriptor set
     memset(client, -1, sizeof(client));                                                     // clear client's fd record
-    memset(client_login, 0, sizeof(client_login));                                          // 0: not login, 1: login
+    memset(client_login, false, sizeof(client_login));                                      // false: not login, true: login
     FD_ZERO(&afds);                                                                         // clear afds
     FD_SET(server_fd, &afds);                                                               // put listen socket in afds
 
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
             int clientfd = accept(server_fd, (struct sockaddr *)&client_addr, &clientlen);  // accept a new client and give it a new socket
             int client_idx = client_MAX;
             for(int i = 0; i < client_MAX; ++i) {
-                if(client[i] < 0){
+                if(client[i] < 0) {
                     client[i] = clientfd;
                     client_idx = i;
                     break;
@@ -83,14 +83,13 @@ int main(int argc, char *argv[]) {
                 exit(1);
             }
             FD_SET(clientfd, &afds);
-            if(clientfd > maxfd) maxfd = clientfd + 1;
+            if(clientfd >= maxfd) maxfd = clientfd + 1;
             if(clientfd > maxClient) maxClient = clientfd;
 
             // send message to new client
             snprintf(message, sizeof(message), "********************************\n** Welcome to the BBS server. **\n********************************\n%% ");
             write(clientfd, message, sizeof(message));
             numReady--;
-            fprintf(stdout, "ready %d\n", numReady);
             if(numReady <= 0) continue;
         }
         for(int i = 0; i <= maxClient; ++i) {
@@ -107,9 +106,8 @@ int main(int argc, char *argv[]) {
                     client_info.erase(i);
                 } else {
                     buf[n] = '\0';
-                    printf("line: %s\n", buf);
                     char *pch = strtok(buf, " \n\r");
-                    printf("cmd received is %s\n", pch);
+                    printf("Cmd received is %s\n", pch);
                     if(!strcmp(pch, "register")) {
                         fprintf(stdout, "command: register\n");
                         bool format = true, unique = true;
@@ -158,12 +156,13 @@ int main(int argc, char *argv[]) {
                             pch = strtok(NULL, " \n\r");
                             if(pch) {                                                       // check the password
                                 pswd.assign(pch);
-                                if(pswd != user_info[usr]) {
+                                if(!pwd) {
+                                } else if(pswd != user_info[usr]) {
                                     pwd = false;
-                                } else if(client_login[i] == 1) {
+                                } else if(client_login[i]) {
                                     already = true;
                                 } else {
-                                    client_login[i] = 1;
+                                    client_login[i] = true;
                                     client_info[i] = usr;
                                 }
                             } else { format = false; }
@@ -184,32 +183,32 @@ int main(int argc, char *argv[]) {
                     } else if(!strcmp(pch, "logout")) {
                         fprintf(stdout, "command: logout\n");
                         memset(message, '\0', sizeof(message));
-                        if(client_login[i] == 1) {
-                            client_login[i] = 0;
+                        if(client_login[i]) {
+                            client_login[i] = false;
                             snprintf(message, 1023, "Bye, %s.\n%% ", client_info[i].c_str());
                             write(client[i], message, sizeof(message));
                             client_info.erase(i);
-                        } else if(client_login[i] == 0) {
+                        } else {
                             snprintf(message, 1023, "Please login first.\n%% ");
                             write(client[i], message, sizeof(message));
                         }
                     } else if(!strcmp(pch, "whoami")) {
                         fprintf(stdout, "command: whoami\n");
                         memset(message, '\0', sizeof(message));
-                        if(client_login[i] == 1) {
+                        if(client_login[i]) {
                             snprintf(message, 1023, "%s\n%% ", client_info[i].c_str());
                             write(client[i], message, sizeof(message));
-                        } else if(client_login[i] == 0) {
+                        } else {
                             snprintf(message, 1023, "Please login first.\n%% ");
                             write(client[i], message, sizeof(message));
                         }
                     } else if(!strcmp(pch, "exit")) {
-                        fprintf(stdout, "client is close\n");
+                        fprintf(stdout, "client %d is close\n", i);
                         memset(message, '\0', sizeof(message));
                         close(client[i]);
                         FD_CLR(client[i], &afds);
                         client[i] = -1;
-                        client_login[i] = 0;
+                        client_login[i] = false;
                         client_info.erase(i);
                     } else {
                         memset(message, '\0', sizeof(message));
@@ -223,6 +222,5 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
     return 0;
 }
