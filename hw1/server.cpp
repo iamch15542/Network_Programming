@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
                                 pch = strtok(NULL, " \n\r");
                                 if(pch) {
                                     pwd.assign(pch);
-                                    user_info[usr] = pwd;
+                                    if(unique) user_info[usr] = pwd;
                                 } else { 
                                     format = false; 
                                     user_info.erase(usr);
