@@ -1,14 +1,13 @@
 #coding=utf-8
 import threading
 import socket
-import select
 import sqlite3
 import sys
 
 user_info = {}
 user_email = {}
 
-def client_connect(client):
+def client_connect(client, client_num):
     client_info = {'login': False, 'username': None}
     message = '********************************\n** Welcome to the BBS server. **\n********************************\n% '
     client.sendall(message.encode())
@@ -16,11 +15,12 @@ def client_connect(client):
         data = client.recv(1024)
         if len(data) == 0:
             client.close()
+            # print("Client %d close" % client_num)
             break;
         else:
             remove_space = data.decode().strip()
             command = []
-            print("Receive command: %s" % remove_space)
+            # print("Receive command: %s" % remove_space)
             for word in remove_space.split(' '):
                 command.append(word)
             if command[0] == 'register':
@@ -68,26 +68,27 @@ def client_connect(client):
                     message = 'Welcome, ' + command[1] + '.\n% '
             elif command[0] == 'logout':
                 if len(command) != 1:
-                    message = '% '
+                    message = 'Usage: logout\n% '
                 elif client_info['login'] == False:
                     message = 'Please login first.\n% '
                 else:
-                    message = 'Bye, ' + client_info['username'] + '\n% '
+                    message = 'Bye, ' + client_info['username'] + '.\n% '
                     client_info['username'] = None
                     client_info['login'] = False
             elif command[0] == 'whoami':
                 if len(command) != 1:
-                    message = '% '
+                    message = 'Usage: whoami\n% '
                 elif client_info['login'] == False:
                     message = 'Please login first.\n% '
                 else:
                     message = client_info['username'] + '\n% '
             elif command[0] == 'exit':
                 client.close()
+                # print("Client %d close" % client_num)
                 break
             else:
                 message = '% '
-                print('ERROR: Error command. %s' % command[0])
+                # print('ERROR: Error command. %s' % command[0])
             client.sendall(message.encode())
 
 def main():
@@ -97,12 +98,16 @@ def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(('', int(sys.argv[1])))
     server.listen(32)
+    print("Server use : %d port" % int(sys.argv[1]))
+    client_num = 0;
     while True:
         client, addr = server.accept()
-        print("New Client connection")
-        client_thread = threading.Thread(target=client_connect, args=(client,))
+        client_thread = threading.Thread(target=client_connect, args=(client, client_num))
         client_thread.setDaemon(True)
         client_thread.start()
+        print("New connection.")
+        # print("Client %d create" % client_num)
+        client_num = client_num + 1
 
 if __name__ == '__main__':
     main()
