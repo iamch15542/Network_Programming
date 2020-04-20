@@ -10,9 +10,47 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/select.h>
+#include <sqlite3.h>
 
 #define client_MAX 32
 #define MAXLINE 1024
+
+// store Username && password
+std::map<std::string, std::string> user_info;
+
+// sqlite3 info
+sqlite3 *db;
+char *zErrMsg = 0;
+int  rc, sql_cnt = 0;
+char *sql;
+
+// sqlite3 callback function
+static int callback(void *NotUsed, int argc, char **argv, char **azColName) {
+    std::string usr, pwd;
+    usr.assign(argv[0]);
+    pwd.assign(argv[1]);
+    user_info[usr] = pwd;
+    sql_cnt++;
+    return 0;
+}
+
+void sqlite3_cmd(char *sql) {
+    /* Execute SQL statement */
+    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+    if(rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    } else {
+        fprintf(stdout, "Successfully\n");
+    }
+}
+
+void get_old_info() {
+    char select_cmd[1000];
+    sprintf(select_cmd, "SELECT Username, Password FROM USERS;");
+    // sprintf(select_cmd, "SELECT Password FROM USERS WHERE Username LIKE '%s';", usr.c_str()); // select only one
+    sqlite3_cmd(select_cmd);
+}
 
 int main(int argc, char *argv[]) {
 
@@ -20,7 +58,6 @@ int main(int argc, char *argv[]) {
     int serverPORT;
     int server_fd;
     char message[MAXLINE];                                                                  // message send to client
-    std::map<std::string, std::string> user_info;                                           // store Username && password
     std::map<int, std::string> client_info;                                                 // client login which user
     struct sockaddr_in srv_addr;
 
@@ -30,6 +67,26 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    /* Open database */
+    rc = sqlite3_open("test.db", &db);
+    if(rc) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        exit(0);
+    } else {
+        fprintf(stdout, "Opened database successfully\n");
+    }
+
+    /* Create SQL statement */
+    sql = "CREATE TABLE USERS(" \
+          "UID INTEGER PRIMARY KEY AUTOINCREMENT," \
+          "Username TEXT NOT NULL UNIQUE," \
+          "Email TEXT NOT NULL," \
+          "Password TEXT NOT NULL);";
+
+    /* Execute SQL statement */
+    sqlite3_cmd(sql);
+    get_old_info();
+    
     // set server information
     serverPORT = atoi(argv[1]);
     server_fd = socket(AF_INET, SOCK_STREAM, 0);                                            // AF_INET -> IPv4, SOCK_STREAM -> TCP
@@ -122,11 +179,19 @@ int main(int argc, char *argv[]) {
                                 unique = false;
                             }
                             pch = strtok(NULL, " \n\r");
-                            if(pch) { 
+                            if(pch) {
+                                std::string usr_email;
+                                usr_email.assign(pch);
                                 pch = strtok(NULL, " \n\r");
                                 if(pch) {
                                     pwd.assign(pch);
-                                    if(unique) user_info[usr] = pwd;
+                                    if(unique) {
+                                        user_info[usr] = pwd;
+                                        char sql2[1000];
+                                        sprintf(sql2, "INSERT INTO USERS (UID, Username, Email, Password)" \
+                                            "VALUES (%d, '%s', '%s', '%s');", sql_cnt++, usr.c_str(), usr_email.c_str(), pwd.c_str());
+                                        sqlite3_cmd(sql2);
+                                    }
                                 } else { 
                                     format = false; 
                                     user_info.erase(usr);
@@ -223,5 +288,6 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+    sqlite3_close(db);
     return 0;
 }
