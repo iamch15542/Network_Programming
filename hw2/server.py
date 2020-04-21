@@ -189,7 +189,24 @@ def client_connect(client, client_num):
                                 remove_br = str(comment[1]).replace('<br>', '\n')
                                 msssage += remove_br + '\n'
             elif command[0] == 'delete-post':
-                e= 1
+                if len(command) != 2:
+                    message = 'Usage: delete-post <post-id>\n% '
+                else:
+                    if client_info['login'] == False:
+                        message = 'Please login first.\n% '
+                    else:
+                        c.execute("SELECT * FROM bbs_post WHERE BID = ?", (int(command[1]), ))
+                        post_info = c.fetchone()
+                        if post_info == None:
+                            message = 'Post does not exist.\n% '
+                        else:
+                            if client_info['username'] != post_info[2]:
+                                message = 'Not the post owner.\n% '
+                            else:
+                                c.execute("DELETE FROM bbs_post WHERE BID = ?", (int(command[1]), ))
+                                c.execute("DELETE FROM post_comment WHERE post_id = ?", (int(command[1]), ))
+                                db.commit()
+                                message = 'Delete successfully.\n% '
             elif command[0] == 'update-post':
                 e= 1
             elif command[0] == 'comment':
