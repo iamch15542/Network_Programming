@@ -3,42 +3,42 @@ import threading
 import socket
 import sqlite3
 import sys
+import re
 
 user_info = {}
 user_email = {}
 
 # database init
 db = sqlite3.connect('server.db', check_same_thread = False)
-print("Opened database successfully")
+print('Opened database successfully')
 c = db.cursor()
 
 def database_init():
-    c.execute("""CREATE TABLE IF NOT EXISTS user_info(
-                    name text,
-                    email text,
-                    password text,
-                    primary key(name));""")
-    c.execute("""CREATE TABLE IF NOT EXISTS bbs_board(
-                    name text,
-                    moderator text,
-                    primary key(name));""")
-    c.execute("""CREATE TABLE IF NOT EXISTS bbs_post(
-                    board_name text,
-                    id integer,
-                    title text,
-                    author text,
-                    date text,
-                    content text,
-                    primary key(id));""")
-    c.execute("""CREATE TABLE IF NOT EXISTS post_comment(
-                    post_id integer,
-                    comment text,
-                    commenter text);""")
+    c.execute('''CREATE TABLE IF NOT EXISTS user_info(
+                    name TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    password TEXT NOT NULL,
+                    primary key(name));''')
+    c.execute('''CREATE TABLE IF NOT EXISTS bbs_board(
+                    boardname TEXT NOT NULL,
+                    moderator TEXT NOT NULL,
+                    primary key(boardname));''')
+    c.execute('''CREATE TABLE IF NOT EXISTS bbs_post(
+                    bid INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    author TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    board_name TEXT NOT NULL,
+                    content TEXT);''')
+    c.execute('''CREATE TABLE IF NOT EXISTS post_comment(
+                    post_id INTEGER NOT NULL,
+                    comment TEXT,
+                    username TEXT NOT NULL);''')
     db.commit()
 
 def board_find(board):
-    c.execute("SELECT * FROM bbs_board where name = ? ", (board, ))
-    board_list = c.fetchone()
+    c.execute("SELECT * FROM bbs_board WHERE name = ? ", (board, ))
+    board_list = c.fetchall()
     if board_list == []:
         return False
     else:
@@ -143,11 +143,51 @@ def client_connect(client, client_num):
             elif command[0] == 'create-post':
                 e= 1
             elif command[0] == 'list-board':
-                e= 1
+                c.execute("SELECT * FROM bbs_board")
+                board_list = c.fetchall()
+                if len(command) == 1:
+                    message = 'Index\tName\tModerator\n'
+                    idx = 0
+                    for board in board_list:
+                        idx += 1
+                        message += str(idx) + '\t' + board[0] + '\t' + board[1] + '\n'
+                    message += '% '
+                elif if len(command) == 2:
+                    key_word = command[1][2:]
+                    print('list_board_key_word %s' % key_word)
+                    message = 'Index\tName\tModerator\n'
+                    idx = 0
+                    for board in board_list:
+                        if re.search(key_word, board[0]) != None:
+                            idx += 1
+                            message += str(idx) + '\t' + board[0] + '\t' + board[1] + '\n'
+                    message += '% '
+                else:
+                    message = 'Usage: list-board ##<key>\n% '
             elif command[0] == 'list-post':
                 e= 1
             elif command[0] == 'read':
-                e= 1
+                if len(command) != 2:
+                    message = 'Usage: read <post-id>\n% '
+                else:
+                    c.execute("SELECT * FROM bbs_post WHERE BID = ?", (int(command[1]), ))
+                    post_info = c.fetchone()
+                    if post_info == None:
+                        message = 'Post does not exist.\n% '
+                    else:
+                        message = 'Author\t:' + post_info[2] + '\n'
+                        message += 'Title\t:' + post_info[1] + '\n'
+                        message += 'Date\t:' + post_info[3] + '\n'
+                        message += '--\n'
+                        post_content = str(post_info[5]).replace('<br>', '\n')
+                        message += post_content + '\n--\n'
+                        c.execute("SELECT * FROM post_comment WHERE post_id = ?", (int(command[1]), ))
+                        comment_info = c.fetchall()
+                        if comment_info != []:
+                            for comment in comment_info:
+                                message += comment[2] + ':'
+                                remove_br = str(comment[1]).replace('<br>', '\n')
+                                msssage += remove_br + '\n'
             elif command[0] == 'delete-post':
                 e= 1
             elif command[0] == 'update-post':
