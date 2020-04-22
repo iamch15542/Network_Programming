@@ -50,7 +50,7 @@ def client_connect(client, client_num):
         data = client.recv(1024)
         if len(data) == 0:
             client.close()
-            print("Client %d close" % client_num)
+            # print("Client %d close" % client_num)
             break;
         else:
             remove_space = data.decode().strip()
@@ -121,9 +121,8 @@ def client_connect(client, client_num):
                     message = client_info['username'] + '\n% '
             elif command[0] == 'exit':
                 client.close()
-                print("Client %d close" % client_num)
+                # print("Client %d close" % client_num)
                 break
-            
             elif command[0] == 'create-board':
                 if len(command) != 2:
                     message = 'Usage: create-board <name>\n% '
@@ -144,10 +143,8 @@ def client_connect(client, client_num):
                     if board_find(command[1]) == False:
                         message = 'Board does not exist.\n% '
                     else:
-                        title_idx = remove_space.find('--title')
-                        content_idx = remove_space.find('--content')
-                        title = remove_space[title_idx + 8: content_idx]
-                        content = remove_space[content_idx + 10: ]
+                        title = re.search('--title (.*) --content', remove_space).group(1)
+                        content = re.search('--content (.*)', remove_space).group(1)
                         c.execute("INSERT INTO bbs_post(title, author, date, board_name, content) VALUES(?, ?, ?, ?, ?)", (title, client_info['username'], str(date.today()), command[1], content))
                         db.commit()
                         message = 'Create post successfully.\n% '
@@ -155,21 +152,21 @@ def client_connect(client, client_num):
                 c.execute("SELECT * FROM bbs_board")
                 board_list = c.fetchall()
                 if len(command) == 1:
-                    message = 'Index\tName\tModerator\n'
+                    message = 'Index\tName\t\tModerator\n'
                     idx = 0
                     for board in board_list:
                         idx += 1
-                        message += str(idx) + '\t' + board[0] + '\t' + board[1] + '\n'
+                        message += str(idx) + '\t' + board[0] + '\t\t' + board[1] + '\n'
                     message += '% '
                 elif len(command) == 2:
                     key_word = command[1][2:]
                     print('list_board_key_word %s' % key_word)
-                    message = 'Index\tName\tModerator\n'
+                    message = 'Index\tName\t\tModerator\n'
                     idx = 0
                     for board in board_list:
                         if re.search(key_word, board[0]) != None:
                             idx += 1
-                            message += str(idx) + '\t' + board[0] + '\t' + board[1] + '\n'
+                            message += str(idx) + '\t' + board[0] + '\t\t' + board[1] + '\n'
                     message += '% '
                 else:
                     message = 'Usage: list-board ##<key>\n% '
@@ -180,9 +177,11 @@ def client_connect(client, client_num):
                     else:
                         c.execute("SELECT * FROM bbs_post WHERE board_name = ?", (command[1],))
                         post_list = c.fetchall()
-                        message = 'ID\tTitle\tAuthor\tDate\n'
+                        message = 'ID\tTitle\t\tAuthor\t\tDate\n'
                         for post in post_list:
-                            message += str(post[0]) + '\t' + post[1] + '\t' + post[2] + '\t' + post[3] + '\n'
+                            month = re.search('(.*)-(.*)-(.*)', post[3]).group(2)
+                            day = re.search('(.*)-(.*)-(.*)', post[3]).group(3)
+                            message += str(post[0]) + '\t' + post[1] + '\t\t' + post[2] + '\t\t' + month + '/' + day + '\n'
                         message += '% '
                 elif len(command) == 3:
                     if board_find(command[1]) == False:
@@ -192,10 +191,12 @@ def client_connect(client, client_num):
                         post_list = c.fetchall()
                         key_word = command[2][2:]
                         print('list_board_key_word %s' % key_word)
-                        message = 'ID\tTitle\tAuthor\tDate\n'
+                        message = 'ID\tTitle\t\tAuthor\t\tDate\n'
                         for post in post_list:
                             if re.search(key_word, post[1]) != None:
-                                message += str(post[0]) + '\t' + post[1] + '\t' + post[2] + '\t' + post[3] + '\n'
+                                month = re.search('(.*)-(.*)-(.*)', post[3]).group(2)
+                                day = re.search('(.*)-(.*)-(.*)', post[3]).group(3)
+                                message += str(post[0]) + '\t' + post[1] + '\t\t' + post[2] + '\t\t' + month + '/' + day + '\n'
                         message += '% '
                 else:
                     message = 'Usage: list-post <board-name> ##<key>\n% '
@@ -302,7 +303,7 @@ def main():
         client_thread.setDaemon(True)
         client_thread.start()
         print("New connection.")
-        print("Client %d create" % client_num)
+        # print("Client %d create" % client_num)
         client_num = client_num + 1
 
 if __name__ == '__main__':
