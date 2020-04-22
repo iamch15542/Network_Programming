@@ -3,6 +3,7 @@ import threading
 import socket
 import sqlite3
 import sys
+import os
 import re
 from datetime import date
 
@@ -50,7 +51,6 @@ def client_connect(client, client_num):
         data = client.recv(1024)
         if len(data) == 0:
             client.close()
-            # print("Client %d close" % client_num)
             break;
         else:
             remove_space = data.decode().strip()
@@ -69,7 +69,7 @@ def client_connect(client, client_num):
                     else:
                         user_info[command[1]] = command[3]
                         user_email[command[1]] = command[2]
-                        c.execute("INSERT INTO user_info VALUES(?, ?, ?)", (command[1], command[2], command[3]))
+                        c.execute('INSERT INTO user_info VALUES(?, ?, ?)', (command[1], command[2], command[3]))
                         db.commit()
                 if cmd_format == False:
                     message = 'Usage: register <username> <email> <password>\n% '
@@ -121,7 +121,6 @@ def client_connect(client, client_num):
                     message = client_info['username'] + '\n% '
             elif command[0] == 'exit':
                 client.close()
-                # print("Client %d close" % client_num)
                 break
             elif command[0] == 'create-board':
                 if len(command) != 2:
@@ -133,7 +132,7 @@ def client_connect(client, client_num):
                         if board_find(command[1]) == True:
                             message = 'Board already exist.\n% '
                         else:
-                            c.execute("INSERT INTO bbs_board VALUES(?, ?)", (command[1], client_info['username']))
+                            c.execute('INSERT INTO bbs_board VALUES(?, ?)', (command[1], client_info['username']))
                             db.commit()
                             message = 'Create board successfully.\n% '
             elif command[0] == 'create-post':
@@ -145,7 +144,7 @@ def client_connect(client, client_num):
                     else:
                         title = re.search('--title (.*) --content', remove_space).group(1)
                         content = re.search('--content (.*)', remove_space).group(1)
-                        c.execute("INSERT INTO bbs_post(title, author, date, board_name, content) VALUES(?, ?, ?, ?, ?)", (title, client_info['username'], str(date.today()), command[1], content))
+                        c.execute('INSERT INTO bbs_post(title, author, date, board_name, content) VALUES(?, ?, ?, ?, ?)', (title, client_info['username'], str(date.today()), command[1], content))
                         db.commit()
                         message = 'Create post successfully.\n% '
             elif command[0] == 'list-board':
@@ -160,7 +159,7 @@ def client_connect(client, client_num):
                     message += '% '
                 elif len(command) == 2:
                     key_word = command[1][2:]
-                    print('list_board_key_word %s' % key_word)
+                    print('list_board_key_word: %s' % key_word)
                     message = 'Index\tName\t\tModerator\n'
                     idx = 0
                     for board in board_list:
@@ -175,28 +174,28 @@ def client_connect(client, client_num):
                     if board_find(command[1]) == False:
                         message = 'Board does not exist.\n% '
                     else:
-                        c.execute("SELECT * FROM bbs_post WHERE board_name = ?", (command[1],))
+                        c.execute('SELECT * FROM bbs_post WHERE board_name = ?', (command[1], ))
                         post_list = c.fetchall()
-                        message = 'ID\tTitle\t\tAuthor\t\tDate\n'
+                        message = 'ID\tTitle\tAuthor\tDate\n'
                         for post in post_list:
                             month = re.search('(.*)-(.*)-(.*)', post[3]).group(2)
                             day = re.search('(.*)-(.*)-(.*)', post[3]).group(3)
-                            message += str(post[0]) + '\t' + post[1] + '\t\t' + post[2] + '\t\t' + month + '/' + day + '\n'
+                            message += str(post[0]) + '\t' + post[1] + '\t' + post[2] + '\t' + month + '/' + day + '\n'
                         message += '% '
                 elif len(command) == 3:
                     if board_find(command[1]) == False:
                         message = 'Board does not exist.\n% '
                     else:
-                        c.execute("SELECT * FROM bbs_post WHERE board_name = ?", (command[1],))
+                        c.execute('SELECT * FROM bbs_post WHERE board_name = ?', (command[1], ))
                         post_list = c.fetchall()
                         key_word = command[2][2:]
-                        print('list_board_key_word %s' % key_word)
-                        message = 'ID\tTitle\t\tAuthor\t\tDate\n'
+                        print('list_post_key_word:  %s' % key_word)
+                        message = 'ID\tTitle\tAuthor\tDate\n'
                         for post in post_list:
                             if re.search(key_word, post[1]) != None:
                                 month = re.search('(.*)-(.*)-(.*)', post[3]).group(2)
                                 day = re.search('(.*)-(.*)-(.*)', post[3]).group(3)
-                                message += str(post[0]) + '\t' + post[1] + '\t\t' + post[2] + '\t\t' + month + '/' + day + '\n'
+                                message += str(post[0]) + '\t' + post[1] + '\t' + post[2] + '\t' + month + '/' + day + '\n'
                         message += '% '
                 else:
                     message = 'Usage: list-post <board-name> ##<key>\n% '
@@ -204,7 +203,7 @@ def client_connect(client, client_num):
                 if len(command) != 2:
                     message = 'Usage: read <post-id>\n% '
                 else:
-                    c.execute("SELECT * FROM bbs_post WHERE bid = ?", (int(command[1]), ))
+                    c.execute('SELECT * FROM bbs_post WHERE bid = ?', (int(command[1]), ))
                     post_info = c.fetchone()
                     if post_info == None:
                         message = 'Post does not exist.\n% '
@@ -215,7 +214,7 @@ def client_connect(client, client_num):
                         message += '--\n'
                         post_content = str(post_info[5]).replace('<br>', '\n')
                         message += post_content + '\n--\n'
-                        c.execute("SELECT * FROM post_comment WHERE post_id = ?", (int(command[1]), ))
+                        c.execute('SELECT * FROM post_comment WHERE post_id = ?', (int(command[1]), ))
                         comment_info = c.fetchall()
                         if comment_info != []:
                             for comment in comment_info:
@@ -230,7 +229,7 @@ def client_connect(client, client_num):
                     if client_info['login'] == False:
                         message = 'Please login first.\n% '
                     else:
-                        c.execute("SELECT * FROM bbs_post WHERE bid = ?", (int(command[1]), ))
+                        c.execute('SELECT * FROM bbs_post WHERE bid = ?', (int(command[1]), ))
                         post_info = c.fetchone()
                         if post_info == None:
                             message = 'Post does not exist.\n% '
@@ -238,8 +237,8 @@ def client_connect(client, client_num):
                             if client_info['username'] != post_info[2]:
                                 message = 'Not the post owner.\n% '
                             else:
-                                c.execute("DELETE FROM bbs_post WHERE bid = ?", (int(command[1]), ))
-                                c.execute("DELETE FROM post_comment WHERE post_id = ?", (int(command[1]), ))
+                                c.execute('DELETE FROM bbs_post WHERE bid = ?', (int(command[1]), ))
+                                c.execute('DELETE FROM post_comment WHERE post_id = ?', (int(command[1]), ))
                                 db.commit()
                                 message = 'Delete successfully.\n% '
             elif command[0] == 'update-post':
@@ -255,14 +254,12 @@ def client_connect(client, client_num):
                             message = 'Not the post owner.\n% '
                         else:
                             if command[2] == '--title':
-                                title_idx = remove_space.find('--title')
-                                title = remove_space[title_idx + 8:]
-                                c.execute("UPDATE bbs_post SET title = ? WHERE bid = ?", (title, str(command[1])))
+                                title = re.search('--title (.*)', remove_space).group(1)
+                                c.execute('UPDATE bbs_post SET title = ? WHERE bid = ?', (title, int(command[1])))
                                 db.commit()
                             elif command[2] == '--content': 
-                                content_idx = remove_space.find('--content')
-                                content = remove_space[content_idx + 10: ]
-                                c.execute("UPDATE bbs_post SET content = ? WHERE bid = ?", (content, str(command[1])))
+                                content = re.search('--content (.*)', remove_space).group(1)
+                                c.execute('UPDATE bbs_post SET content = ? WHERE bid = ?', (content, int(command[1])))
                                 db.commit()
                             message = 'Update successfully.\n% '
             elif command[0] == 'comment':
@@ -272,7 +269,7 @@ def client_connect(client, client_num):
                     if client_info['login'] == False:
                         message = 'Please login first.\n% '
                     else:
-                        c.execute("SELECT * FROM bbs_post WHERE bid = ?", (int(command[1]), ))
+                        c.execute('SELECT * FROM bbs_post WHERE bid = ?', (int(command[1]), ))
                         post_info = c.fetchone()
                         if post_info == None:
                             message = 'Post does not exist.\n% '
@@ -297,14 +294,18 @@ def main():
     server.listen(32)
     print("Server use : %d port" % int(sys.argv[1]))
     client_num = 0;
-    while True:
-        client, addr = server.accept()
-        client_thread = threading.Thread(target=client_connect, args=(client, client_num))
-        client_thread.setDaemon(True)
-        client_thread.start()
-        print("New connection.")
-        # print("Client %d create" % client_num)
-        client_num = client_num + 1
+    try:
+        while True:
+            client, addr = server.accept()
+            client_thread = threading.Thread(target=client_connect, args=(client, client_num))
+            client_thread.setDaemon(True)
+            client_thread.start()
+            print("New connection.")
+            client_num = client_num + 1
+    except KeyboardInterrupt:
+        print("\nServer close")
+        db.close()
+        os.remove(str(os.getcwd() + '/server.db'))
 
 if __name__ == '__main__':
     main()
