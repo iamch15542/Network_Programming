@@ -139,14 +139,17 @@ def client_connect(client, client_num):
                 if client_info['login'] == False:
                     message = 'Please login first.\n% '
                 else:
-                    if board_find(command[1]) == False:
-                        message = 'Board does not exist.\n% '
+                    if len(command) > 2 and command[2] == '--title' and '--content' in command:
+                        if board_find(command[1]) == False:
+                            message = 'Board does not exist.\n% '
+                        else:
+                            title = re.search('--title (.*) --content', remove_space).group(1)
+                            content = re.search('--content (.*)', remove_space).group(1)
+                            c.execute('INSERT INTO bbs_post(title, author, date, board_name, content) VALUES(?, ?, ?, ?, ?)', (title, client_info['username'], str(date.today()), command[1], content))
+                            db.commit()
+                            message = 'Create post successfully.\n% '
                     else:
-                        title = re.search('--title (.*) --content', remove_space).group(1)
-                        content = re.search('--content (.*)', remove_space).group(1)
-                        c.execute('INSERT INTO bbs_post(title, author, date, board_name, content) VALUES(?, ?, ?, ?, ?)', (title, client_info['username'], str(date.today()), command[1], content))
-                        db.commit()
-                        message = 'Create post successfully.\n% '
+                        message = 'Usage: create-post <board-name> --title <title> --content <content>\n'
             elif command[0] == 'list-board':
                 c.execute("SELECT * FROM bbs_board")
                 board_list = c.fetchall()
@@ -245,23 +248,26 @@ def client_connect(client, client_num):
                 if client_info['login'] == False:
                     message = 'Please login first.\n% '
                 else:
-                    c.execute('SELECT * FROM bbs_post WHERE bid = ?', (int(command[1]), ))
-                    post_info = c.fetchone()
-                    if post_info == None:
-                        message = 'Post does not exist.\n% '
+                    if len(command) < 3:
+                        message = 'Usage: update-post <post-id> --title/content <new>\n'
                     else:
-                        if client_info['username'] != post_info[2]:
-                            message = 'Not the post owner.\n% '
+                        c.execute('SELECT * FROM bbs_post WHERE bid = ?', (int(command[1]), ))
+                        post_info = c.fetchone()
+                        if post_info == None:
+                            message = 'Post does not exist.\n% '
                         else:
-                            if command[2] == '--title':
-                                title = re.search('--title (.*)', remove_space).group(1)
-                                c.execute('UPDATE bbs_post SET title = ? WHERE bid = ?', (title, int(command[1])))
-                                db.commit()
-                            elif command[2] == '--content': 
-                                content = re.search('--content (.*)', remove_space).group(1)
-                                c.execute('UPDATE bbs_post SET content = ? WHERE bid = ?', (content, int(command[1])))
-                                db.commit()
-                            message = 'Update successfully.\n% '
+                            if client_info['username'] != post_info[2]:
+                                message = 'Not the post owner.\n% '
+                            else:
+                                if command[2] == '--title':
+                                    title = re.search('--title (.*)', remove_space).group(1)
+                                    c.execute('UPDATE bbs_post SET title = ? WHERE bid = ?', (title, int(command[1])))
+                                    db.commit()
+                                elif command[2] == '--content': 
+                                    content = re.search('--content (.*)', remove_space).group(1)
+                                    c.execute('UPDATE bbs_post SET content = ? WHERE bid = ?', (content, int(command[1])))
+                                    db.commit()
+                                message = 'Update successfully.\n% '
             elif command[0] == 'comment':
                 if len(command) < 3:
                     message = 'Usage: comment <post-id> <comment>\n% '
