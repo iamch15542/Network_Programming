@@ -153,22 +153,25 @@ def client_connect(client, client_num):
             elif command[0] == 'list-board':
                 c.execute("SELECT * FROM bbs_board")
                 board_list = c.fetchall()
+                board_len = 4
+                for board in board_list:
+                    board_len = len(board[0]) if len(board[0]) > board_len else board_len
                 if len(command) == 1:
-                    message = 'Index\tName\t\tModerator\n'
+                    message = 'Index\t' + 'Name'.ljust(board_len + 3) + 'Moderator\n'
                     idx = 0
                     for board in board_list:
                         idx += 1
-                        message += str(idx) + '\t' + board[0] + '\t\t' + board[1] + '\n'
+                        message += str(idx) + '\t' + board[0].ljust(board_len + 3) + board[1] + '\n'
                     message += '% '
                 elif len(command) == 2:
                     key_word = command[1][2:]
                     print('list_board_key_word: %s' % key_word)
-                    message = 'Index\tName\t\tModerator\n'
+                    message = 'Index\t' + 'Name'.ljust(board_len + 3) + 'Moderator\n'
                     idx = 0
                     for board in board_list:
                         if re.search(key_word, board[0]) != None:
                             idx += 1
-                            message += str(idx) + '\t' + board[0] + '\t\t' + board[1] + '\n'
+                            message += str(idx) + '\t' + board[0].ljust(board_len + 3) + board[1] + '\n'
                     message += '% '
                 else:
                     message = 'Usage: list-board ##<key>\n% '
@@ -179,11 +182,15 @@ def client_connect(client, client_num):
                     else:
                         c.execute('SELECT * FROM bbs_post WHERE board_name = ?', (command[1], ))
                         post_list = c.fetchall()
-                        message = 'ID\tTitle\tAuthor\tDate\n'
+                        text_len = [5, 6]
+                        for post in post_list:
+                            text_len[0] = len(post[1]) if len(post[1]) > text_len[0] else text_len[0]
+                            text_len[1] = len(post[2]) if len(post[2]) > text_len[1] else text_len[1]
+                        message = 'ID\t' + 'Title'.ljust(text_len[0] + 3) + 'Author'.ljust(text_len[1] + 3) + 'Date\n'
                         for post in post_list:
                             month = re.search('(.*)-(.*)-(.*)', post[3]).group(2)
                             day = re.search('(.*)-(.*)-(.*)', post[3]).group(3)
-                            message += str(post[0]) + '\t' + post[1] + '\t' + post[2] + '\t' + month + '/' + day + '\n'
+                            message += str(post[0]) + '\t' + post[1].ljust(text_len[0] + 3) + post[2].ljust(text_len[1] + 3) + month + '/' + day + '\n'
                         message += '% '
                 elif len(command) == 3:
                     if board_find(command[1]) == False:
@@ -191,14 +198,18 @@ def client_connect(client, client_num):
                     else:
                         c.execute('SELECT * FROM bbs_post WHERE board_name = ?', (command[1], ))
                         post_list = c.fetchall()
+                        text_len = [5, 6]
+                        for post in post_list:
+                            text_len[0] = len(post[1]) if len(post[1]) > text_len[0] else text_len[0]
+                            text_len[1] = len(post[2]) if len(post[2]) > text_len[1] else text_len[1]
+                        message = 'ID\t' + 'Title'.ljust(text_len[0] + 3) + 'Author'.ljust(text_len[1] + 3) + 'Date\n'
                         key_word = command[2][2:]
                         print('list_post_key_word:  %s' % key_word)
-                        message = 'ID\tTitle\tAuthor\tDate\n'
                         for post in post_list:
                             if re.search(key_word, post[1]) != None:
                                 month = re.search('(.*)-(.*)-(.*)', post[3]).group(2)
                                 day = re.search('(.*)-(.*)-(.*)', post[3]).group(3)
-                                message += str(post[0]) + '\t' + post[1] + '\t' + post[2] + '\t' + month + '/' + day + '\n'
+                                message += str(post[0]) + '\t' + post[1].ljust(text_len[0] + 3) + post[2].ljust(text_len[1] + 3) + month + '/' + day + '\n'
                         message += '% '
                 else:
                     message = 'Usage: list-post <board-name> ##<key>\n% '
