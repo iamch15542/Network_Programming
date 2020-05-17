@@ -1,5 +1,6 @@
 #coding=utf-8
 import threading
+import boto3
 import socket
 import sqlite3
 import sys
@@ -14,6 +15,9 @@ user_email = {}
 db = sqlite3.connect('server.db', check_same_thread = False)
 print('Opened database successfully')
 c = db.cursor()
+
+# open s3
+s3 = boto3.resource('s3')
 
 def database_init():
     c.execute('''CREATE TABLE IF NOT EXISTS user_info(
