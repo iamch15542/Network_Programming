@@ -1,0 +1,21 @@
+0:create-post hi_ih --title hello my first post --content This is my first post
+2:create-post he_eh --title How are you --content Err...<br>Ya! 
+0:login venus 11131
+1:login apollo 15313
+2:login mars 11215
+3:login mercury 13154
+0:create-post hu_uh --title hello my first post --content This is my first post
+0:create-post hi_ih --title hello my first post --content This is my first post
+2:create-post he_eh --title How are you --content Err...<br>Ya! 
+1:list-post hi_ih
+3:list-post he_eh
+0:list-post hi_ih ##hello
+0:create-post hi_ih --title hello my second post --content This is my second post.
+0:logout
+1:logout
+2:logout
+3:logout
+0:exit
+1:exit
+2:exit
+3:exit

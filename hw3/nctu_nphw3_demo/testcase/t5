@@ -1,0 +1,26 @@
+0:mail-to apollo --subject hi apollo --content Follow me!
+1:retr-mail 1
+1:delete-mail 1
+0:login venus 11131
+1:login apollo 15313
+2:login mars 11215
+3:login mercury 13154
+0:mail-to apollo --subject hi apollo --content Follow me!
+1:mail-to jupiter --subject hi jupiter --content Jupiter!<br>Are you there
+2:mail-to apollo --subject hello apollo --content Apollo!<br>Are you there
+3:mail-to mars --subject hello mars --content Mars!<br>Are you there
+1:list-mail
+2:list-mail
+1:retr-mail 3
+1:retr-mail 2
+1:delete-mail 3
+1:delete-mail 1
+1:list-mail
+0:logout
+1:logout
+2:logout
+3:logout
+0:exit
+1:exit
+2:exit
+3:exit

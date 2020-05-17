@@ -1,0 +1,20 @@
+0:login venus 11130
+1:login apollo 15313
+2:login mars 11214
+3:login mercury 13154
+0:login venus 11131
+0:login venus 11131
+2:login mars 11215
+0:create-board hi_ih
+2:create-board hi_ih
+2:create-board he_eh
+3:list-board
+1:list-board ##he
+0:logout
+1:logout
+2:logout
+3:logout
+0:exit
+1:exit
+2:exit
+3:exit
