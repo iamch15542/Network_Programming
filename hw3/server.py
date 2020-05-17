@@ -10,20 +10,20 @@ from datetime import date
 
 user_info = {}
 user_email = {}
+user_bucket = {}
+user_register_num = 0
 
 # database init
 db = sqlite3.connect('server.db', check_same_thread = False)
 print('Opened database successfully')
 c = db.cursor()
 
-# open s3
-s3 = boto3.resource('s3')
-
 def database_init():
     c.execute('''CREATE TABLE IF NOT EXISTS user_info(
                     name TEXT NOT NULL,
                     email TEXT NOT NULL,
                     password TEXT NOT NULL,
+                    bucket_name TEXT NOT NULL,
                     primary key(name));''')
     c.execute('''CREATE TABLE IF NOT EXISTS bbs_board(
                     boardname TEXT NOT NULL,
@@ -51,6 +51,7 @@ def client_connect(client, client_num):
     client_info = {'login': False, 'username': None}
     message = '********************************\n** Welcome to the BBS server. **\n********************************\n% '
     client.sendall(message.encode())
+    global user_register_num
     while True:
         data = client.recv(1024)
         if len(data) == 0:
@@ -59,7 +60,8 @@ def client_connect(client, client_num):
         else:
             remove_space = data.decode().strip()
             command = []
-            # print("Receive command: %s" % remove_space)
+            bucket_name = ''
+            print("Receive command: %s" % remove_space)
             for word in remove_space.split(' '):
                 command.append(word)
             if command[0] == 'register':
@@ -73,8 +75,11 @@ def client_connect(client, client_num):
                     else:
                         user_info[command[1]] = command[3]
                         user_email[command[1]] = command[2]
-                        c.execute('INSERT INTO user_info VALUES(?, ?, ?)', (command[1], command[2], command[3]))
+                        bucket_name = command[1] + '-' + str(user_register_num) + '-' + '0616091'
+                        user_bucket[command[1]] = bucket_name
+                        c.execute('INSERT INTO user_info VALUES(?, ?, ?, ?)', (command[1], command[2], command[3], bucket_name))
                         db.commit()
+                        user_register_num += 1
                 if cmd_format == False:
                     message = 'Usage: register <username> <email> <password>\n% '
                 elif unique == False:
@@ -95,6 +100,7 @@ def client_connect(client, client_num):
                             if command[2] == user_info[command[1]]:
                                 client_info['login'] = True
                                 client_info['username'] = command[1]
+                                bucket_name = user_bucket[command[1]]
                             else:
                                 pwd = False
                         else:
@@ -302,8 +308,14 @@ def client_connect(client, client_num):
                             message = 'Comment successfully.\n% '
             else:
                 message = '% '
-                # print('ERROR: Error command. %s' % command[0])
+                print('ERROR: Error command. %s' % command[0])
             client.sendall(message.encode())
+
+            if bucket_name != '':
+                print(bucket_name)
+                client.sendall(bucket_name.encode())
+                print('send bucket_name')
+                bucket_name = ''
 
 def main():
     if len(sys.argv) != 2:

@@ -20,7 +20,25 @@ def main():
                 client.close()
                 break;
             else:
-                print(server_respone.decode(), end='')
+                command_result = server_respone.decode()
+                print(command_result, end='')
+                result_len = len(command_result)
+                respone = command_result[:result_len - 3]
+                # print('\n------------')
+                # print(respone)
+                # print('-----------')
+                if 'Register successfully.' in respone:
+                    # print('ffff')
+                    create_bucket_name = client.recv(1024).decode()
+                    # print(create_bucket_name)
+                    s3 = boto3.resource('s3')
+                    s3.create_bucket(Bucket=create_bucket_name)
+                    # print('Bucket name: %s' % create_bucket_name)
+                elif 'Welcome,' in respone:
+                    # print('welcome')
+                    receive_bucket_name = client.recv(1024).decode()
+                    bucket_name = receive_bucket_name
+                    # print(receive_bucket_name)
                 client_command = input()
                 client.sendall(client_command.encode())
     except KeyboardInterrupt:
