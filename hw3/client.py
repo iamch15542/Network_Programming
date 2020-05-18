@@ -67,8 +67,8 @@ def main():
                     info = []
                     for word in receive_post_info.split(' '):
                         info.append(word)
-                    target_bucket = s3.Bucket(info[0])
                     txt_name = info[1] + '.txt'
+                    target_bucket = s3.Bucket(info[0])
                     target_object = target_bucket.Object(txt_name)
                     command_result = target_object.get()['Body'].read().decode() + '% '
                 elif 'Delete successfully.' in respone:
@@ -92,6 +92,7 @@ def main():
                         content = re.search('(.*)\n--\n(.*)', object_content).group(1)
                         comment = re.search('(.*)\n--\n(.*)', object_content).group(2)
                         new_content = re.search('--content (.*)', client_command).group(1)
+                        new_content = str(new_content).replace('<br>', '\n')
                         new_post = new_content + '\n--\n' + comment
                         target_object.delete()
                         upload_txt(bucket_name, txt_name, new_post)
@@ -118,6 +119,7 @@ def main():
                         info.append(word)
                     txt_name = info[1] + '-mail-to-you-' + info[2] + '.txt'
                     content = re.search('--content (.*)', client_command).group(1) + '\n'
+                    content = str(content).replace('<br>', '\n')
                     upload_txt(info[0], txt_name, content)
                 elif 'retrmailcommand' in respone:
                     # retr-mail command
@@ -132,13 +134,13 @@ def main():
                     txt_name = info[0] + '-mail-to-you-' + info[1] + '.txt'
                     target_object = target_bucket.Object(txt_name)
                     command_result = target_object.get()['Body'].read().decode() + '% '
-                elif 'Delete successfully.' in respone:
+                elif 'Mail deleted.' in respone:
                     # mail-delete command
                     receive_post_info = client.recv(1024).decode()
                     info = []
                     for word in receive_post_info.split(' '):
                         info.append(word)
-                    txt_name = info[1] + '-mail-to-you-' + info[2] + '.txt'
+                    txt_name = info[0] + '-mail-to-you-' + info[1] + '.txt'
                     target_bucket = s3.Bucket(bucket_name)
                     target_object = target_bucket.Object(txt_name) 
                     target_object.delete()
@@ -148,6 +150,8 @@ def main():
                     client_info['login'] = False
                 print(command_result, end='')
                 client_command = input()
+                if client_command == '':
+                    client_command = 'empty'
                 client.sendall(client_command.encode())
     except KeyboardInterrupt:
         print("\nClient close")
