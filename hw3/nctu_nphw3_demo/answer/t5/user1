@@ -6,18 +6,18 @@
 % Welcome, apollo.
 % jupiter does not exist.
 % 	ID	Subject	From	Date
-	1	hi apollo	venus	05/15
-	2	hello apollo	mars	05/15
+	1	hi apollo	venus	05/18
+	2	hello apollo	mars	05/18
 % No such mail.
 % 	Subject	:hello apollo
 	From	:mars
-	Date	:2020-05-15
+	Date	:2020-05-18
 	--
 	Apollo!
 	Are you there
 % No such mail.
 % Mail deleted.
 % 	ID	Subject	From	Date
-	1	hello apollo	mars	05/15
+	1	hello apollo	mars	05/18
 % Bye, apollo.
 % 

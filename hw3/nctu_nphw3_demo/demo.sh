@@ -1,7 +1,8 @@
 #!/bin/bash
 
 SESSION="nphw3demo"
-SLEEP_TIME=4
+SHORT_SLEEP_TIME=1
+LONG_SLEEP_TIME=2.5
 TESTCASE_DIR="testcase"
 OUTPUT_DIR="output"
 USER_NUM=4
@@ -47,20 +48,23 @@ do
 	for user in $(seq 0 ${USER_ID})
 	do
 		tmux send-keys -t ${user} "${RUN_CMD} | tee ${TARGET_DIR}/user${user}" Enter
-		sleep ${SLEEP_TIME}
+		sleep ${SHORT_SLEEP_TIME}
 	done
 
 	while IFS= read -r line
 	do
 		index=$(echo ${line} | cut -d ':' -f1 | tr -d '\n')
-		if ! [ -z "${index}" ]
-		then
-			command=$(echo ${line} | cut -d':' -f2)
-			tmux send-keys -t ${index} "${command}" Enter
+
+		command=$(echo ${line} | cut -d':' -f2)
+		tmux send-keys -t ${index} "${command}" Enter
+
+		if [[ ${command} =~ register|create-post|read|delete-post|update-post|comment|mail ]]; then
+			sleep ${LONG_SLEEP_TIME}
+		else
+			sleep ${SHORT_SLEEP_TIME}
 		fi
-		sleep ${SLEEP_TIME}
 	done < ${TESTCASE_DIR}/t${i}
-	sleep ${SLEEP_TIME}
+	sleep 1.5
 done
 
 tmux send-keys -t ${USER_NUM} "./run_test.sh ${USER_NUM} ${START_CASE} ${END_CASE}" Enter
