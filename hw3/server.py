@@ -36,6 +36,13 @@ def database_init():
                     date TEXT NOT NULL,
                     board_name TEXT NOT NULL,
                     content TEXT);''')
+    c.execute('''CREATE TABLE IF NOT EXISTS bbs_mail(
+                    bid INTEGER PRIMARY KEY AUTOINCREMENT,
+                    subject TEXT NOT NULL,
+                    author TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    receiver_name TEXT NOT NULL,
+                    content TEXT);''')
     c.execute('''CREATE TABLE IF NOT EXISTS post_comment(
                     post_id INTEGER NOT NULL,
                     comment TEXT,
@@ -60,7 +67,6 @@ def client_connect(client, client_num):
         else:
             remove_space = data.decode().strip()
             command = []
-            bucket_name = ''
             post_info_send_to_client = ''
             print("Receive command: %s" % remove_space)
             for word in remove_space.split(' '):
@@ -81,6 +87,7 @@ def client_connect(client, client_num):
                         c.execute('INSERT INTO user_info VALUES(?, ?, ?, ?)', (command[1], command[2], command[3], bucket_name))
                         db.commit()
                         user_register_num += 1
+                        post_info_send_to_client = bucket_name
                 if cmd_format == False:
                     message = 'Usage: register <username> <email> <password>\n% '
                 elif unique == False:
@@ -101,7 +108,7 @@ def client_connect(client, client_num):
                             if command[2] == user_info[command[1]]:
                                 client_info['login'] = True
                                 client_info['username'] = command[1]
-                                bucket_name = user_bucket[command[1]]
+                                post_info_send_to_client = user_bucket[command[1]]
                             else:
                                 pwd = False
                         else:
@@ -139,7 +146,7 @@ def client_connect(client, client_num):
                 else:
                     if client_info['login'] == False:
                         message = 'Please login first.\n% '
-                    else: 
+                    else:
                         if board_find(command[1]) == True:
                             message = 'Board already exist.\n% '
                         else:
@@ -158,10 +165,10 @@ def client_connect(client, client_num):
                             content = re.search('--content (.*)', remove_space).group(1)
                             c.execute('INSERT INTO bbs_post(title, author, date, board_name, content) VALUES(?, ?, ?, ?, ?)', (title, client_info['username'], str(date.today()), command[1], content))
                             db.commit()
-                            post_info_send_to_client = str(c.lastrowid)
                             message = 'Create post successfully.\n% '
+                            post_info_send_to_client = str(c.lastrowid)
                     else:
-                        message = 'Usage: create-post <board-name> --title <title> --content <content>\n'
+                        message = 'Usage: create-post <board-name> --title <title> --content <content>\n% '
             elif command[0] == 'list-board':
                 c.execute("SELECT * FROM bbs_board")
                 board_list = c.fetchall()
@@ -314,16 +321,89 @@ def client_connect(client, client_num):
                             message = 'Comment successfully.\n% '
                             post_bucket = user_bucket[post_info[2]]
                             post_info_send_to_client = post_bucket + ' ' + command[1] + ' ' + post_info[2]
+            elif command[0] == 'mail-to':
+                if client_info['login'] == False:
+                    message = 'Please login first.\n% '
+                else:
+                    if len(command) > 2 and command[2] == '--subject' and '--content' in command:
+                        if user_info.get(command[1]) == None:
+                            message = command[1] + ' does not exist.\n% '
+                        else:
+                            subject = re.search('--subject (.*) --content', remove_space).group(1)
+                            content = re.search('--content (.*)', remove_space).group(1)
+                            c.execute('INSERT INTO bbs_mail(subject, author, date, receiver_name, content) VALUES(?, ?, ?, ?, ?)', (subject, client_info['username'], str(date.today()), command[1], content))
+                            db.commit()
+                            message = 'Sent successfully.\n% '
+                            post_bucket = user_bucket[command[1]]
+                            post_info_send_to_client = post_bucket + ' ' + command[1] + str(c.lastrowid)
+                    else:
+                        message = 'Usage: mail-to <username> --subject <subject> --content <content>\n% '
+            elif command[0] == 'list-mail':
+                c.execute("SELECT * FROM bbs_mail")
+                board_list = c.fetchall()
+                board_len = 4
+                for board in board_list:
+                    board_len = len(board[0]) if len(board[0]) > board_len else board_len
+                if len(command) == 1:
+                    if client_info['login'] == False:
+                        message = 'Please login first.\n% '
+                    else:
+                        c.execute('SELECT * FROM bbs_mail WHERE receiver_name = ?', (client_info['username'], ))
+                        mail_list = c.fetchall()
+                        text_len = [7, 4]
+                        for mail in mail_list:
+                            text_len[0] = len(mail[1]) if len(mail[1]) > text_len[0] else text_len[0]
+                            text_len[1] = len(mail[2]) if len(mail[2]) > text_len[1] else text_len[1]
+                        message = 'ID\t' + 'Subject'.ljust(text_len[0] + 3) + 'From'.ljust(text_len[1] + 3) + 'Date\n'
+                        for mail in mail_list:
+                            month = re.search('(.*)-(.*)-(.*)', mail[3]).group(2)
+                            day = re.search('(.*)-(.*)-(.*)', mail[3]).group(3)
+                            message += str(mail[0]) + '\t' + mail[1].ljust(text_len[0] + 3) + mail[2].ljust(text_len[1] + 3) + month + '/' + day + '\n'
+                        message += '% '
+                else:
+                    message = 'Usage: list-mail\n% '
+            elif command[0] == 'retr-mail':
+                if len(command) != 2:
+                    message = 'Usage: retr-mail <mail#>\n% '
+                else:
+                    if client_info['login'] == False:
+                        message = 'Please login first.\n% '
+                    else:
+                        c.execute('SELECT * FROM bbs_mail WHERE bid = ? and receiver_name = ?', (int(command[1]), client_info['username']))
+                        mail_info = c.fetchone()
+                        if mail_info == None:
+                            message = 'No such mail.\n% '
+                        else:
+                            message = 'Subject\t:' + mail_info[1] + '\n'
+                            message += 'From\t:' + mail_info[2] + '\n'
+                            message += 'Date\t:' + mail_info[3] + '\n'
+                            message += '--\n'
+                            message += 'retrmailcommand\n% '
+                            post_info_send_to_client = mail_info[2] + ' ' + command[1]
+            elif command[0] == 'delete-mail':
+                if len(command) != 2:
+                    message = 'Usage: delete-mail <mail#>\n% '
+                else:
+                    if client_info['login'] == False:
+                        message = 'Please login first.\n% '
+                    else:
+                        c.execute('SELECT * FROM bbs_mail WHERE bid = ?', (int(command[1]), ))
+                        mail_info = c.fetchone()
+                        if mail_info == None:
+                            message = 'No such mail.\n% '
+                        else:
+                            if client_info['username'] != mail_info[4]:
+                                message = 'No such mail.\n% '
+                            else:
+                                c.execute('DELETE FROM bbs_mail WHERE bid = ?', (int(command[1]), ))
+                                db.commit()
+                                message = 'Mail deleted.\n% '
+                                post_info_send_to_client = mail_info[2] + ' ' + command[1]
             else:
                 message = '% '
                 print('ERROR: Error command. %s' % command[0])
             client.sendall(message.encode())
-            if bucket_name != '':
-                print(bucket_name)
-                client.sendall(bucket_name.encode())
-                print('send bucket_name')
-                bucket_name = ''
-            elif post_info_send_to_client != '':
+            if post_info_send_to_client != '':
                 print(post_info_send_to_client)
                 client.sendall(post_info_send_to_client.encode())
                 post_info_send_to_client = ''
@@ -347,7 +427,7 @@ def main():
             print("New connection.")
             client_num = client_num + 1
     except KeyboardInterrupt:
-        print("\nServer close")
+        print('\nServer close')
         db.close()
         os.remove(str(os.getcwd() + '/server.db'))
         s3 = boto3.resource('s3')
@@ -357,6 +437,7 @@ def main():
                 target_object = target_bucket.Object(target_bucket_object.key)
                 target_object.delete()
             target_bucket.delete()
+        print('\nClean S3 bucket!')
 
 if __name__ == '__main__':
     main()
