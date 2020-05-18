@@ -2,6 +2,9 @@
 import socket
 import boto3
 import sys
+import os
+import re
+from datetime import date
 
 def main():
     # check argv
@@ -12,6 +15,12 @@ def main():
     # create socket
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((sys.argv[1], int(sys.argv[2])))
+
+    # init information
+    bucket_name = ''
+    client_command = ''
+    client_info = {'login': False, 'username': None}
+    s3 = boto3.resource('s3')
     print("Client connect to %s, use : %d port" % (sys.argv[1], int(sys.argv[2])))
     try:
         while True:
@@ -21,24 +30,105 @@ def main():
                 break;
             else:
                 command_result = server_respone.decode()
-                print(command_result, end='')
                 result_len = len(command_result)
                 respone = command_result[:result_len - 3]
-                # print('\n------------')
-                # print(respone)
-                # print('-----------')
                 if 'Register successfully.' in respone:
-                    # print('ffff')
+                    # register command
                     create_bucket_name = client.recv(1024).decode()
-                    # print(create_bucket_name)
-                    s3 = boto3.resource('s3')
                     s3.create_bucket(Bucket=create_bucket_name)
-                    # print('Bucket name: %s' % create_bucket_name)
+                    print(command_result, end='')
                 elif 'Welcome,' in respone:
-                    # print('welcome')
+                    # login command
                     receive_bucket_name = client.recv(1024).decode()
                     bucket_name = receive_bucket_name
-                    # print(receive_bucket_name)
+                    user_name = re.search('Welcome, (.*).', respone).group(1)
+                    client_info['login'] = True
+                    client_info['username'] = user_name
+                    print(command_result, end='')
+                elif 'Create post successfully.' in respone:
+                    # create-post command
+                    receive_post_info = client.recv(1024).decode()
+                    txt_name = receive_post_info + '.txt'
+                    post_content = re.search('--content (.*)', client_command).group(1)
+                    post_content = str(post_content).replace('<br>', '\n') + '\n--\n'
+                    txt = open(txt_name, 'a+', encoding='utf-8')
+                    txt.write(post_content)
+                    txt.close()
+                    target_bucket = s3.Bucket(bucket_name) 
+                    target_bucket.upload_file(txt_name, txt_name)
+                    os.remove(str(os.getcwd() + '/' + txt_name))
+                    print(command_result, end='')
+                elif 'readcommand' in respone:
+                    # read command
+                    print_len = len(respone)
+                    print_respone = respone[:print_len - 11]
+                    print(print_respone, end='')
+                    receive_post_info = client.recv(1024).decode().strip()
+                    info = []
+                    for word in receive_post_info.split(' '):
+                        info.append(word)
+                    target_bucket = s3.Bucket(info[0])
+                    txt_name = info[1] + '.txt'
+                    target_object = target_bucket.Object(txt_name)
+                    content = target_object.get()['Body'].read().decode() + '% '
+                    print(content, end='')
+                elif 'Delete successfully.' in respone:
+                    # delete command
+                    receive_post_info = client.recv(1024).decode()
+                    txt_name = receive_post_info + '.txt'
+                    target_bucket = s3.Bucket(bucket_name)
+                    target_object = target_bucket.Object(txt_name) 
+                    target_object.delete()
+                    print(command_result, end='')
+                elif 'Update successfully.' in respone:
+                    # update command
+                    receive_post_info = client.recv(1024).decode().strip()
+                    info = []
+                    for word in receive_post_info.split(' '):
+                        info.append(word)
+                    txt_name = info[1] + '.txt'
+                    if info[0] == '--content':
+                        target_bucket = s3.Bucket(bucket_name)
+                        target_object = target_bucket.Object(txt_name)
+                        object_content = target_object.get()['Body'].read().decode()
+                        content = re.search('(.*)\n--\n(.*)', object_content).group(1)
+                        comment = re.search('(.*)\n--\n(.*)', object_content).group(2)
+                        new_content = re.search('--content (.*)', client_command).group(1)
+                        new_post = new_content + '\n--\n' + comment
+                        target_object.delete()
+                        txt = open(txt_name, 'a+', encoding='utf-8')
+                        txt.write(new_post)
+                        txt.close()
+                        target_bucket.upload_file(txt_name, txt_name)
+                        os.remove(str(os.getcwd() + '/' + txt_name))
+                    print(command_result, end='')
+                elif 'Comment successfully.' in respone:
+                    # comment command
+                    receive_post_info = client.recv(1024).decode().strip()
+                    info = []
+                    for word in receive_post_info.split(' '):
+                        info.append(word)
+                    txt_name = info[1] + '.txt'
+                    target_bucket = s3.Bucket(info[0])
+                    target_object = target_bucket.Object(txt_name)
+                    object_content = target_object.get()['Body'].read().decode()
+                    postid_idx = client_command.find(info[1])
+                    comment = client_command[postid_idx + len(info[1]) + 1: ]
+                    new_post = object_content + client_info['username'] + ': ' + str(comment).replace('<br>', '\n') + '\n'
+                    target_object.delete()
+                    txt = open(txt_name, 'a+', encoding='utf-8')
+                    txt.write(new_post)
+                    txt.close()
+                    target_bucket.upload_file(txt_name, txt_name)
+                    os.remove(str(os.getcwd() + '/' + txt_name))
+                    print(command_result, end='')
+                elif 'Bye,' in respone:
+                    bucket_name = ''
+                    client_info['username'] = None
+                    client_info['login'] = False
+                    print(command_result, end='')
+                else:
+                    print(command_result, end='')
                 client_command = input()
                 client.sendall(client_command.encode())
     except KeyboardInterrupt:

@@ -61,6 +61,7 @@ def client_connect(client, client_num):
             remove_space = data.decode().strip()
             command = []
             bucket_name = ''
+            post_info_send_to_client = ''
             print("Receive command: %s" % remove_space)
             for word in remove_space.split(' '):
                 command.append(word)
@@ -157,6 +158,7 @@ def client_connect(client, client_num):
                             content = re.search('--content (.*)', remove_space).group(1)
                             c.execute('INSERT INTO bbs_post(title, author, date, board_name, content) VALUES(?, ?, ?, ?, ?)', (title, client_info['username'], str(date.today()), command[1], content))
                             db.commit()
+                            post_info_send_to_client = str(c.lastrowid)
                             message = 'Create post successfully.\n% '
                     else:
                         message = 'Usage: create-post <board-name> --title <title> --content <content>\n'
@@ -236,16 +238,18 @@ def client_connect(client, client_num):
                         message += 'Title\t:' + post_info[1] + '\n'
                         message += 'Date\t:' + post_info[3] + '\n'
                         message += '--\n'
-                        post_content = str(post_info[5]).replace('<br>', '\n')
-                        message += post_content + '\n--\n'
-                        c.execute('SELECT * FROM post_comment WHERE post_id = ?', (int(command[1]), ))
-                        comment_info = c.fetchall()
-                        if comment_info != []:
-                            for comment in comment_info:
-                                message += comment[2] + ': '
-                                remove_br = str(comment[1]).replace('<br>', '\n')
-                                message += remove_br + '\n'
-                        message += '% '
+                        # post_content = str(post_info[5]).replace('<br>', '\n')
+                        # message += post_content + '\n--\n'
+                        # c.execute('SELECT * FROM post_comment WHERE post_id = ?', (int(command[1]), ))
+                        # comment_info = c.fetchall()
+                        # if comment_info != []:
+                        #     for comment in comment_info:
+                        #         message += comment[2] + ': '
+                        #         remove_br = str(comment[1]).replace('<br>', '\n')
+                        #         message += remove_br + '\n'
+                        message += 'readcommand\n% '
+                        get_bucket = user_bucket[post_info[2]]
+                        post_info_send_to_client = get_bucket + ' ' + command[1]
             elif command[0] == 'delete-post':
                 if len(command) != 2:
                     message = 'Usage: delete-post <post-id>\n% '
@@ -265,6 +269,7 @@ def client_connect(client, client_num):
                                 c.execute('DELETE FROM post_comment WHERE post_id = ?', (int(command[1]), ))
                                 db.commit()
                                 message = 'Delete successfully.\n% '
+                                post_info_send_to_client = command[1]
             elif command[0] == 'update-post':
                 if client_info['login'] == False:
                     message = 'Please login first.\n% '
@@ -289,6 +294,7 @@ def client_connect(client, client_num):
                                     c.execute('UPDATE bbs_post SET content = ? WHERE bid = ?', (content, int(command[1])))
                                     db.commit()
                                 message = 'Update successfully.\n% '
+                                post_info_send_to_client = command[2] + ' ' + command[1]
             elif command[0] == 'comment':
                 if len(command) < 3:
                     message = 'Usage: comment <post-id> <comment>\n% '
@@ -306,16 +312,21 @@ def client_connect(client, client_num):
                             c.execute('INSERT INTO post_comment VALUES(?, ?, ?)', (int(command[1]), comment, client_info['username']))
                             db.commit()
                             message = 'Comment successfully.\n% '
+                            post_bucket = user_bucket[post_info[2]]
+                            post_info_send_to_client = post_bucket + ' ' + command[1] + ' ' + post_info[2]
             else:
                 message = '% '
                 print('ERROR: Error command. %s' % command[0])
             client.sendall(message.encode())
-
             if bucket_name != '':
                 print(bucket_name)
                 client.sendall(bucket_name.encode())
                 print('send bucket_name')
                 bucket_name = ''
+            elif post_info_send_to_client != '':
+                print(post_info_send_to_client)
+                client.sendall(post_info_send_to_client.encode())
+                post_info_send_to_client = ''
 
 def main():
     if len(sys.argv) != 2:
@@ -339,6 +350,13 @@ def main():
         print("\nServer close")
         db.close()
         os.remove(str(os.getcwd() + '/server.db'))
+        s3 = boto3.resource('s3')
+        for key, value in user_bucket.items():
+            target_bucket = s3.Bucket(value)
+            for target_bucket_object in target_bucket.objects.all():
+                target_object = target_bucket.Object(target_bucket_object.key)
+                target_object.delete()
+            target_bucket.delete()
 
 if __name__ == '__main__':
     main()
