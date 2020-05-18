@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SESSION="nphw3demo"
-SLEEP_TIME=1
+SLEEP_TIME=4
 TESTCASE_DIR="testcase"
 OUTPUT_DIR="output"
 USER_NUM=4

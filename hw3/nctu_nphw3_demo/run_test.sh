@@ -27,8 +27,8 @@ do
 
 	for user in $(seq 0 ${USER_NO})
 	do
-        sed -i "s_[0-9]\{2\}/[0-9]\{2\}_${DATE_TODAY}_g" ${ANSWER_DIR}/t${i}/user${user}
-        sed -i "s_[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_${DATE_FULL}_g" ${ANSWER_DIR}/t${i}/user${user}
+        sed -i '' "s_[0-9]\{2\}/[0-9]\{2\}_${DATE_TODAY}_g" ${ANSWER_DIR}/t${i}/user${user}
+        sed -i '' "s_[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_${DATE_FULL}_g" ${ANSWER_DIR}/t${i}/user${user}
 		errors=$( diff -wyB --suppress-common-lines ${ANSWER_DIR}/t${i}/user${user} ${OUTPUT_DIR}/t${i}/user${user} | wc -l )
 		
 		total_errors=$(( ${total_errors} + ${errors} ))

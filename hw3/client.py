@@ -30,7 +30,7 @@ def main():
     client_command = ''
     client_info = {'login': False, 'username': None}
     s3 = boto3.resource('s3')
-    print("Client connect to %s, use : %d port" % (sys.argv[1], int(sys.argv[2])))
+    # print("Client connect to %s, use : %d port" % (sys.argv[1], int(sys.argv[2])))
     try:
         while True:
             server_respone = client.recv(1024)

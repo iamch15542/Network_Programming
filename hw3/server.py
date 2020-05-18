@@ -69,7 +69,7 @@ def client_connect(client, client_num):
             remove_space = data.decode().strip()
             command = []
             post_info_send_to_client = ''
-            print("Receive command: %s" % remove_space)
+            # print("Receive command: %s" % remove_space)
             for word in remove_space.split(' '):
                 command.append(word)
             if command[0] == 'register':
@@ -413,10 +413,10 @@ def client_connect(client, client_num):
                                 message = 'No such mail.\n% '
             else:
                 message = '% '
-                print('ERROR: Error command. %s' % command[0])
+                # print('ERROR: Error command. %s' % command[0])
             client.sendall(message.encode())
             if post_info_send_to_client != '':
-                print(post_info_send_to_client)
+                # print(post_info_send_to_client)
                 time.sleep(0.3)
                 client.sendall(post_info_send_to_client.encode())
                 post_info_send_to_client = ''
