@@ -94,6 +94,8 @@ def main():
                         new_content = re.search('--content (.*)', client_command).group(1)
                         new_content = str(new_content).replace('<br>', '\n')
                         new_post = new_content + '\n--\n' + comment
+                        if comment != '':
+                            new_post += '\n'
                         target_object.delete()
                         upload_txt(bucket_name, txt_name, new_post)
                 elif 'Comment successfully.' in respone:
