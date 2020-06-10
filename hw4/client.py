@@ -4,7 +4,23 @@ import boto3
 import sys
 import os
 import re
+import time
+import threading
 from datetime import date
+from kafka import KafkaConsumer, KafkaProducer
+
+board_subscribe = {}
+author_subscribe = {}
+subscribe_list = []
+
+def kafka_consumer(consumer):
+    while True:
+        msg_pack = consumer.poll(timeout_ms=500)
+        for tp, messages in msg_pack.items():
+            for message in messages:
+                print(tp.topic.decode())
+                print(message.key.decode())
+                print(message.value.decode())
 
 def upload_txt(bucket_name, txt_name, content):
     txt = open(txt_name, 'a+', encoding='utf-8')
@@ -25,11 +41,19 @@ def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((sys.argv[1], int(sys.argv[2])))
 
+    # kafka client
+    timestamp = str(time.time())
+    consumer = KafkaConsumer(group_id=timestamp, bootstrap_servers=['localhost:9092'], api_version =(0, 9))
+    kafka_client = threading.Thread(target=kafka_consumer, args=(consumer, ))
+    kafka_client.setDaemon(True)
+    kafka_client.start()
+
     # init information
     bucket_name = ''
     client_command = ''
     client_info = {'login': False, 'username': None}
     s3 = boto3.resource('s3')
+    global subscribe_list
     # print("Client connect to %s, use : %d port" % (sys.argv[1], int(sys.argv[2])))
     try:
         while True:
@@ -146,6 +170,35 @@ def main():
                     target_bucket = s3.Bucket(bucket_name)
                     target_object = target_bucket.Object(txt_name) 
                     target_object.delete()
+                elif 'Subscribe successfully' in respone:
+                    command = []
+                    for word in client_command.split(' '):
+                        command.append(word)
+                    if command[1] == '--board':
+                        if command[2] in board_subscribe:
+                            board_subscribe[command[2]].append(command[4])
+                        else:
+                            board_subscribe[command[2]] = []
+                            board_subscribe[command[2]].append(command[4])
+                    elif command[1] == '--author':
+                        if command[2] in author_subscribe:
+                            author_subscribe[command[2]].append(command[4])
+                        else:
+                            author_subscribe[command[2]] = []
+                            author_subscribe[command[2]].append(command[4])
+                    if command[2] not in subscribe_list:
+                        subscribe_list.append(command[2])
+                    consumer.subscribe(topics=subscribe_list)
+                elif 'Unsubscribe successfully' in respone:
+                    command = []
+                    for word in client_command.split(' '):
+                        command.append(word)
+                    if command[1] == '--board':
+                        del board_subscribe[command[2]] 
+                    elif command[1] == '--author':
+                        del author_subscribe[command[2]]
+                    subscribe_list.remove(command[2])
+                    consumer.subscribe(topics=subscribe_list)
                 elif 'Bye,' in respone:
                     bucket_name = ''
                     client_info['username'] = None

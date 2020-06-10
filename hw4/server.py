@@ -8,6 +8,7 @@ import os
 import re
 import time
 from datetime import date
+from kafka import KafkaConsumer, KafkaProducer
 
 user_info = {}
 user_email = {}
@@ -59,6 +60,8 @@ def client_connect(client, client_num):
     client_info = {'login': False, 'username': None}
     message = '********************************\n** Welcome to the BBS server. **\n********************************\n% '
     client.sendall(message.encode())
+    board_subscribe = {}
+    author_subscribe = {}
     global user_register_num
     while True:
         data = client.recv(1024)
@@ -168,6 +171,13 @@ def client_connect(client, client_num):
                             db.commit()
                             message = 'Create post successfully.\n% '
                             post_info_send_to_client = str(c.lastrowid)
+                            producer = KafkaProducer(bootstrap_servers=['localhost:9092'], api_version = (0, 9))
+                            future = producer.send(command[1], key=command[1].encode(), value=title.encode(), partition=0)
+                            result = future.get(timeout=3)
+                            print(result)
+                            future = producer.send(client_info['username'], key=client_info['username'].encode(), value=title.encode(), partition=0)
+                            result = future.get(timeout=3)
+                            print(result)
                     else:
                         message = 'Usage: create-post <board-name> --title <title> --content <content>\n% '
             elif command[0] == 'list-board':
@@ -411,13 +421,95 @@ def client_connect(client, client_num):
                                 idx += 1
                             if mail_find == False:
                                 message = 'No such mail.\n% '
+            elif command[0] == 'subscribe':
+                if len(command) != 5:
+                    if command[1] == '--board':
+                        message = 'usage: subscribe --board <board-name> --keyword <keyword>\n% '
+                    elif command[1] == '--author':
+                        message = 'usage: subscribe --author <author-name> --keyword <keyword>\n% '
+                else:
+                    if client_info['login'] == False:
+                        message = 'Please login first.\n% '
+                    else:
+                        if command[1] == '--board':
+                            if command[3] != '--keyword':
+                                message = 'usage: subscribe --board <board-name> --keyword <keyword>\n% '
+                            elif command[2] in board_subscribe:
+                                if command[4] in board_subscribe[command[2]]:
+                                    message = 'Already subscribed\n% '
+                                else:
+                                    board_subscribe[command[2]].append(command[4])
+                                    message = 'Subscribe successfully\n% '
+                            else:
+                                board_subscribe[command[2]] = []
+                                board_subscribe[command[2]].append(command[4])
+                                message = 'Subscribe successfully\n% '
+                        elif command[1] == '--author':
+                            if command[3] != '--keyword':
+                                message = 'usage: subscribe --author <author-name> --keyword <keyword>\n% '
+                            elif command[2] in author_subscribe:
+                                if command[4] in author_subscribe[command[2]]:
+                                    message = 'Already subscribed\n% '
+                                else:
+                                    author_subscribe[command[2]].append(command[4])
+                                    message = 'Subscribe successfully\n% '
+                            else:
+                                author_subscribe[command[2]] = []
+                                author_subscribe[command[2]].append(command[4])
+                                message = 'Subscribe successfully\n% '
+            elif command[0] == 'unsubscribe':
+                if len(command) != 3:
+                    if command[1] == '--board':
+                        message = 'usage: unsubscribe --board <board-name>\n% '
+                    elif command[1] == '--author':
+                        message = 'usage: unsubscribe --author <author-name>\n% '
+                else:
+                    if client_info['login'] == False:
+                        message = 'Please login first.\n% '
+                    else:
+                        if command[1] == '--board':
+                            if command[2] in board_subscribe:
+                                del board_subscribe[command[2]]  
+                                message = 'Unsubscribe successfully\n% '
+                            else:
+                                message = "You haven't subscribed " + command[2] + '\n% '
+                        elif command[1] == '--author':
+                            if command[2] in author_subscribe:
+                                del author_subscribe[command[2]]  
+                                message = 'Unsubscribe successfully\n% '
+                            else:
+                                message = "You haven't subscribed " + command[2] + '\n% '
+            elif command[0] == 'list-sub':
+                if len(command) != 1:
+                    message = 'Usage: list-sub\n% '
+                else:
+                    if client_info['login'] == False:
+                        message = 'Please login first.\n% '
+                    else:
+                        message = ''
+                        if len(board_subscribe) > 0:
+                            message = 'Board: '
+                            for board in board_subscribe:
+                                message += board + ': '
+                                for subscribe in board:
+                                    message += subscribe + ' '
+                                message += ';'
+                            message += '\n'
+                        if len(author_subscribe) > 0:
+                            message += 'Author: '
+                            for author in author_subscribe:
+                                message += author + ': '
+                                for subscribe in author:
+                                    message += subscribe + ' '
+                                message += ';'
+                            message += '\n% '
             else:
                 message = '% '
                 # print('ERROR: Error command. %s' % command[0])
             client.sendall(message.encode())
             if post_info_send_to_client != '':
                 # print(post_info_send_to_client)
-                time.sleep(0.3)
+                time.sleep(0.2)
                 client.sendall(post_info_send_to_client.encode())
                 post_info_send_to_client = ''
 
