@@ -172,12 +172,8 @@ def client_connect(client, client_num):
                             message = 'Create post successfully.\n% '
                             post_info_send_to_client = str(c.lastrowid)
                             producer = KafkaProducer(bootstrap_servers=['localhost:9092'], api_version = (0, 9))
-                            future = producer.send(command[1], key=command[1].encode(), value=title.encode(), partition=0)
-                            result = future.get(timeout=3)
-                            print(result)
-                            future = producer.send(client_info['username'], key=client_info['username'].encode(), value=title.encode(), partition=0)
-                            result = future.get(timeout=3)
-                            print(result)
+                            result = producer.send(command[1], key=client_info['username'].encode(), value=title.encode(), partition=0)
+                            result = producer.send(client_info['username'], key=command[1].encode(), value=title.encode(), partition=0)
                     else:
                         message = 'Usage: create-post <board-name> --title <title> --content <content>\n% '
             elif command[0] == 'list-board':
@@ -490,19 +486,19 @@ def client_connect(client, client_num):
                         if len(board_subscribe) > 0:
                             message = 'Board: '
                             for board in board_subscribe:
-                                message += board + ': '
-                                for subscribe in board:
-                                    message += subscribe + ' '
-                                message += ';'
+                                message += board + ':'
+                                for subscribe in board_subscribe[board]:
+                                    message += ' ' + subscribe
+                                message += '; '
                             message += '\n'
                         if len(author_subscribe) > 0:
                             message += 'Author: '
                             for author in author_subscribe:
-                                message += author + ': '
-                                for subscribe in author:
-                                    message += subscribe + ' '
-                                message += ';'
-                            message += '\n% '
+                                message += author + ':'
+                                for subscribe in author_subscribe[author]:
+                                    message += ' ' + subscribe
+                                message += '; '
+                        message += '\n% '
             else:
                 message = '% '
                 # print('ERROR: Error command. %s' % command[0])

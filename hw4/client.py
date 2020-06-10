@@ -18,9 +18,22 @@ def kafka_consumer(consumer):
         msg_pack = consumer.poll(timeout_ms=500)
         for tp, messages in msg_pack.items():
             for message in messages:
-                print(tp.topic.decode())
-                print(message.key.decode())
-                print(message.value.decode())
+                subscribe_topic = tp.topic
+                key = message.key.decode()
+                value = message.value.decode()
+                notify_message = '*['
+                if subscribe_topic in board_subscribe:
+                    for keyword in board_subscribe[subscribe_topic]:
+                        if keyword in value:
+                            notify_message += subscribe_topic + '] ' + value + ' - by ' + key + '*\n% '
+                            print(notify_message, end='')
+                            break
+                elif subscribe_topic in author_subscribe:
+                    for keyword in author_subscribe[subscribe_topic]:
+                        if keyword in value:
+                            notify_message += key + '] ' + value + ' - by ' + subscribe_topic + '*\n% '
+                            print(notify_message, end='')
+                            break
 
 def upload_txt(bucket_name, txt_name, content):
     txt = open(txt_name, 'a+', encoding='utf-8')
