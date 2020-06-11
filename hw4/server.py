@@ -134,6 +134,8 @@ def client_connect(client, client_num):
                     message = 'Bye, ' + client_info['username'] + '.\n% '
                     client_info['username'] = None
                     client_info['login'] = False
+                    board_subscribe.clear()
+                    author_subscribe.clear()
             elif command[0] == 'whoami':
                 if len(command) != 1:
                     message = 'Usage: whoami\n% '

@@ -211,11 +211,17 @@ def main():
                     elif command[1] == '--author':
                         del author_subscribe[command[2]]
                     subscribe_list.remove(command[2])
-                    consumer.subscribe(topics=subscribe_list)
+                    if not subscribe_list:
+                        consumer.unsubscribe()
+                    else:
+                        consumer.subscribe(topics=subscribe_list)
                 elif 'Bye,' in respone:
                     bucket_name = ''
                     client_info['username'] = None
                     client_info['login'] = False
+                    board_subscribe.clear()
+                    author_subscribe.clear()
+                    subscribe_list.clear()
                 print(command_result, end='')
                 client_command = input()
                 if client_command == '':
