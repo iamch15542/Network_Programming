@@ -421,10 +421,15 @@ def client_connect(client, client_num):
                                 message = 'No such mail.\n% '
             elif command[0] == 'subscribe':
                 if len(command) != 5:
-                    if command[1] == '--board':
-                        message = 'usage: subscribe --board <board-name> --keyword <keyword>\n% '
-                    elif command[1] == '--author':
-                        message = 'usage: subscribe --author <author-name> --keyword <keyword>\n% '
+                    if len(command) < 2:
+                        message = 'usage: subscribe --board/author <board-name>/<author-name> --keyword <keyword>\n% '
+                    else:
+                        if command[1] == '--board':
+                            message = 'usage: subscribe --board <board-name> --keyword <keyword>\n% '
+                        elif command[1] == '--author':
+                            message = 'usage: subscribe --author <author-name> --keyword <keyword>\n% '
+                        else:
+                            message = 'usage: subscribe --board/author <board-name>/<author-name> --keyword <keyword>\n% '
                 else:
                     if client_info['login'] == False:
                         message = 'Please login first.\n% '
@@ -455,12 +460,19 @@ def client_connect(client, client_num):
                                 author_subscribe[command[2]] = []
                                 author_subscribe[command[2]].append(command[4])
                                 message = 'Subscribe successfully\n% '
+                        else:
+                            message = 'usage: subscribe --board/author <board-name>/<author-name> --keyword <keyword>\n% '
             elif command[0] == 'unsubscribe':
                 if len(command) != 3:
-                    if command[1] == '--board':
-                        message = 'usage: unsubscribe --board <board-name>\n% '
-                    elif command[1] == '--author':
-                        message = 'usage: unsubscribe --author <author-name>\n% '
+                    if len(command) < 2:
+                        message = 'usage: unsubscribe --board/author <board-name>/<author-name>\n% '
+                    else:
+                        if command[1] == '--board':
+                            message = 'usage: unsubscribe --board <board-name>\n% '
+                        elif command[1] == '--author':
+                            message = 'usage: unsubscribe --author <author-name>\n% '
+                        else:
+                            message = 'usage: unsubscribe --board/author <board-name>/<author-name>\n% '
                 else:
                     if client_info['login'] == False:
                         message = 'Please login first.\n% '
@@ -477,6 +489,8 @@ def client_connect(client, client_num):
                                 message = 'Unsubscribe successfully\n% '
                             else:
                                 message = "You haven't subscribed " + command[2] + '\n% '
+                        else:
+                            message = 'usage: unsubscribe --board/author <board-name>/<author-name>\n% '
             elif command[0] == 'list-sub':
                 if len(command) != 1:
                     message = 'Usage: list-sub\n% '
